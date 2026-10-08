@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AJWA Reception</title>
+<style>
+:root{--g:#173f32;--cream:#f7f4ed;--gold:#c9b45b;--ink:#17231f;--muted:#68736e;--white:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--cream);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+header{background:var(--g);color:#fff;padding:18px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.logo{font-family:Georgia,serif;font-size:30px;font-weight:700;color:#f3df91}
+.live{font-size:14px}
+.wrap{max-width:1100px;margin:auto;padding:20px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat{background:#fff;border-radius:18px;padding:20px;box-shadow:0 6px 22px #0000000b}
+.stat b{display:block;font-size:32px;color:var(--g)}
+.stat span{font-size:16px}
+.orders{display:grid;gap:16px}
+.empty{background:#fff;border-radius:18px;padding:28px;text-align:center;color:var(--muted)}
+.card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 6px 22px #0000000b}
+.top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.order-no{font-size:20px;font-weight:800;color:var(--g)}
+.customer{margin-top:6px}
+.badge{display:inline-block;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800}
+.NEW{background:#fff1c7}.PREPARING{background:#dceeff}.READY{background:#dcf7df}.COMPLETED{background:#e8e8e8}.CANCELLED{background:#ffdede}
+.items{margin:14px 0;border-top:1px solid #eee;border-bottom:1px solid #eee}
+.item{display:flex;justify-content:space-between;padding:9px 0;gap:10px}
+.meta{color:var(--muted);font-size:14px;line-height:1.5}
+.total{font-size:20px;font-weight:800;color:var(--g);margin:12px 0}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+button{border:0;border-radius:10px;padding:10px 14px;background:var(--g);color:#fff;font-weight:700;cursor:pointer}
+button.alt{background:#e9eee9;color:var(--g)}
+button.cancel{background:#8b3333}
+button:disabled{opacity:.45}
+.note{font-size:13px;color:var(--muted);margin:12px 0}
+@media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}.top{flex-direction:column}.wrap{padding:14px}.logo{font-size:25px}}
+</style>
+</head>
+<body>
+<header><div class="logo">AJWA Reception</div><div class="live">● Live order desk</div></header>
+<div class="wrap">
+  <div class="stats">
+    <div class="stat"><b id="new">0</b><span>New</span></div>
+    <div class="stat"><b id="preparing">0</b><span>Preparing</span></div>
+    <div class="stat"><b id="ready">0</b><span>Ready</span></div>
+    <div class="stat"><b id="sales">₹0</b><span>Sales</span></div>
+  </div>
+  <div class="note" id="status">Loading orders…</div>
+  <div id="orders" class="orders"></div>
+</div>
+
+<script>
+let lastCount = -1;
+
+function money(n){ return "₹" + Number(n || 0).toLocaleString("en-IN"); }
+
+function escapeHtml(s){
+  return String(s ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
+
+async function setStatus(id, status){
+  try{
+    const r = await fetch("/api/orders/" + encodeURIComponent(id), {
+      method:"PATCH",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({status})
+    });
+    const data = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(data.error || "Could not update order");
+    await load();
+  }catch(e){
+    alert(e.message);
+  }
+}
+
+function buttons(order){
+  if(order.status === "NEW")
+    return `<button onclick="setStatus('${order.id}','PREPARING')">Accept & Prepare</button>
+            <button class="cancel" onclick="setStatus('${order.id}','CANCELLED')">Cancel</button>`;
+  if(order.status === "PREPARING")
+    return `<button onclick="setStatus('${order.id}','READY')">Mark Ready</button>
+            <button class="cancel" onclick="setStatus('${order.id}','CANCELLED')">Cancel</button>`;
+  if(order.status === "READY")
+    return `<button onclick="setStatus('${order.id}','COMPLETED')">Complete Order</button>`;
+  return "";
+}
+
+function render(orders){
+  const active = orders.filter(o => o.status !== "COMPLETED" && o.status !== "CANCELLED");
+  document.getElementById("new").textContent = orders.filter(o=>o.status==="NEW").length;
+  document.getElementById("preparing").textContent = orders.filter(o=>o.status==="PREPARING").length;
+  document.getElementById("ready").textContent = orders.filter(o=>o.status==="READY").length;
+  document.getElementById("sales").textContent = money(
+    orders.filter(o=>o.status==="COMPLETED").reduce((s,o)=>s+Number(o.total||0),0)
+  );
+
+  const box = document.getElementById("orders");
+  if(!active.length){
+    box.innerHTML = `<div class="empty">No active orders right now.</div>`;
+    return;
+  }
+
+  box.innerHTML = active.slice().reverse().map(o => `
+    <div class="card">
+      <div class="top">
+        <div>
+          <div class="order-no">${escapeHtml(o.orderNumber || "AJWA Order")}</div>
+          <div class="customer"><b>${escapeHtml(o.customer)}</b> · ${escapeHtml(o.phone)}</div>
+          <div class="meta">${escapeHtml(o.type)} · ${escapeHtml(o.address || "")}</div>
+        </div>
+        <span class="badge ${escapeHtml(o.status)}">${escapeHtml(o.status)}</span>
+      </div>
+      <div class="items">
+        ${(o.items||[]).map(i=>`
+          <div class="item">
+            <span>${escapeHtml(i.name)} × ${Number(i.qty||1)}</span>
+            <b>${money(Number(i.price||0)*Number(i.qty||1))}</b>
+          </div>`).join("")}
+      </div>
+      <div class="total">Total: ${money(o.total)}</div>
+      <div class="meta">Received: ${escapeHtml(o.createdAt || "")}</div>
+      <div class="actions">${buttons(o)}</div>
+    </div>
+  `).join("");
+}
+
+async function load(){
+  try{
+    const r = await fetch("/api/orders?ts="+Date.now(), {cache:"no-store"});
+    if(!r.ok) throw new Error("Server returned " + r.status);
+    const data = await r.json();
+    if(!Array.isArray(data)) throw new Error("Invalid orders response");
+    render(data);
+    document.getElementById("status").textContent =
+      "Connected · " + data.length + " total order(s) · auto-refresh every 5 seconds";
+    if(lastCount !== -1 && data.length > lastCount){
+      try{ new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YQAAAAA=").play(); }catch(_){}
+    }
+    lastCount = data.length;
+  }catch(e){
+    document.getElementById("status").textContent = "Connection error: " + e.message;
+    document.getElementById("orders").innerHTML =
+      `<div class="empty">Could not load orders. Refresh the page and try again.</div>`;
+  }
+}
+
+load();
+setInterval(load, 5000);
+</script>
+</body>
+</html>
