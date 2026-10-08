@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AJWA — Order Online</title>
+<style>
+:root{--g:#173f32;--g2:#245a46;--gold:#c99b45;--cream:#fbf7ee;--ink:#1c211e;--muted:#70766f;--white:#fff}
+*{box-sizing:border-box}body{margin:0;background:var(--cream);color:var(--ink);font-family:Inter,system-ui,sans-serif}
+header{background:var(--g);color:white;padding:13px 5%;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:5}
+.logo{font:bold 23px Georgia;color:#f5dfaa;letter-spacing:2px}.cart{background:var(--gold);border:0;padding:10px 16px;border-radius:999px;font-weight:800}
+main{max-width:1100px;margin:auto;padding:42px 20px}.hero{background:linear-gradient(135deg,#173f32,#2a654f);color:white;border-radius:28px;padding:45px 35px;margin-bottom:35px}.hero h1{font:700 55px Georgia;margin:0 0 12px}.hero p{max-width:600px;color:#d8e5de;line-height:1.6}
+.tabs{display:flex;gap:10px;margin:25px 0}.tab{border:1px solid #ddd0bb;background:white;border-radius:999px;padding:10px 17px;font-weight:800;color:var(--g)}.tab.active{background:var(--g);color:white}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.card{background:white;border:1px solid #eadfcd;border-radius:18px;overflow:hidden}.pic{height:145px;background:#eddfc4;display:grid;place-items:center;font-size:65px}.body{padding:15px}.body h3{margin:0;color:var(--g)}.body p{color:var(--muted);font-size:13px;min-height:38px}.price{font-weight:900;color:var(--g);margin:12px 0}.add{width:100%;border:0;background:#eee5d4;color:var(--g);padding:11px;border-radius:10px;font-weight:900}.drawer{position:fixed;right:0;top:0;width:min(430px,100%);height:100%;background:var(--cream);z-index:20;padding:22px;display:none;box-shadow:-10px 0 40px #0002}.drawer.show{display:block}.item{display:flex;justify-content:space-between;border-bottom:1px solid #ddd2c1;padding:13px 0}.close{float:right;border:0;border-radius:50%;padding:8px}.checkout{margin-top:20px;width:100%;padding:14px;border:0;background:var(--g);color:white;border-radius:12px;font-weight:900}
+@media(max-width:850px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:520px){.hero h1{font-size:40px}.grid{grid-template-columns:1fr 1fr}.pic{height:110px;font-size:50px}}
+</style></head>
+<body>
+<header><div class="logo">AJWA</div><button class="cart" onclick="openCart()">Order <span id="count">0</span></button></header>
+<main>
+<section class="hero"><h1>Good food. Good roots.</h1><p>Premium dry fruits and freshly prepared restaurant favourites, ordered directly from AJWA.</p></section>
+<div class="tabs"><button class="tab active" onclick="show('dry',this)">Premium Dry Fruits</button><button class="tab" onclick="show('food',this)">Restaurant</button></div>
+<div class="grid" id="products"></div>
+</main>
+<aside class="drawer" id="drawer"><button class="close" onclick="closeCart()">×</button><h2>Your Order</h2><div id="items"></div><h3>Total: ₹<span id="total">0</span></h3>
+<label>Name<br><input id="name" style="width:100%;padding:11px;margin:5px 0 10px"></label>
+<label>Phone<br><input id="phone" style="width:100%;padding:11px;margin:5px 0 10px"></label>
+<label>Order type<br><select id="type" style="width:100%;padding:11px;margin:5px 0 10px"><option>Delivery</option><option>Pickup</option></select></label>
+<label>Address / notes<br><textarea id="address" rows="3" style="width:100%;padding:11px;margin:5px 0 10px"></textarea></label>
+<button class="checkout" onclick="place()">Place Order</button>
+<p style="font-size:12px;color:#777">Your order will be sent securely to the AJWA reception dashboard.</p>
+</aside>
+<script>
+const dry=[["Ajwa Dates","Premium soft dates",499,"🌴"],["Medjool Dates","Large and naturally sweet",699,"🫘"],["Premium Almonds","Fresh crunchy almonds",449,"🌰"],["Pistachios","Premium roasted pistachios",599,"💚"],["Cashews","Whole-grade cashews",549,"🥜"],["Mixed Dry Fruits","Everyday premium mix",649,"✨"],["Royal Gift Box","Curated gifting assortment",1199,"🎁"],["Walnuts","Fresh walnut kernels",579,"🌰"]];
+const food=[["Chicken Biryani","Aromatic basmati & tender chicken",299,"🍗"],["Mutton Biryani","Slow-cooked mutton & basmati",399,"🍖"],["Chicken Tikka","Smoky char-grilled tikka",279,"🍢"],["Paneer Tikka","Charred paneer & peppers",249,"🧀"],["Butter Chicken","Creamy tomato gravy",329,"🍛"],["Dal Makhani","Slow-cooked black lentils",229,"🥘"],["Garlic Naan","Soft tandoor naan",69,"🫓"],["Gulab Jamun","Warm syrup-soaked dessert",99,"🍯"]];
+let products=dry,cart=[];
+function show(which,b){products=which==="dry"?dry:food;document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");render()}
+function render(){document.getElementById("products").innerHTML=products.map((x,i)=>`<div class="card"><div class="pic">${x[3]}</div><div class="body"><h3>${x[0]}</h3><p>${x[1]}</p><div class="price">₹${x[2]}</div><button class="add" onclick="add(${i})">Add to order</button></div></div>`).join("")}
+function add(i){let x=products[i],f=cart.find(c=>c.name===x[0]);f?f.qty++:cart.push({name:x[0],price:x[2],qty:1});update();openCart()}
+function update(){count.textContent=cart.reduce((s,x)=>s+x.qty,0);items.innerHTML=cart.length?cart.map((x,i)=>`<div class="item"><span>${x.name} × ${x.qty}</span><b>₹${x.price*x.qty}</b></div>`).join(""):"<p>Your basket is empty.</p>";total.textContent=cart.reduce((s,x)=>s+x.price*x.qty,0)}
+function openCart(){drawer.classList.add("show");update()}function closeCart(){drawer.classList.remove("show")}
+async function place(){
+  const nameEl=document.getElementById("name"), phoneEl=document.getElementById("phone"), typeEl=document.getElementById("type"), addressEl=document.getElementById("address");
+  if(!cart.length){alert("Add something to your order first.");return;}
+  if(!nameEl.value.trim()||!phoneEl.value.trim()){alert("Please enter your name and phone.");return;}
+  const btn=document.querySelector(".checkout"); btn.disabled=true; btn.textContent="Sending...";
+  const order={customer:nameEl.value.trim(),phone:phoneEl.value.trim(),type:typeEl.value,address:addressEl.value.trim(),items:cart,total:cart.reduce((s,x)=>s+x.price*x.qty,0),createdAt:new Date().toISOString()};
+  try{
+    const r=await fetch("/api/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(order)});
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(data.error||"Server error");
+    alert("Order received! Your order number is "+data.orderNumber);
+    cart=[]; update(); closeCart();
+  }catch(e){
+    alert("Order submit nahi hua: "+e.message);
+  }finally{btn.disabled=false;btn.textContent="Place Order";}
+}
+document.querySelector(".checkout").addEventListener("click",place);
+render();
+</script></body></html>
