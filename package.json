@@ -1,0 +1,9 @@
+{
+  "name": "ajwa-ordering-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AJWA customer ordering website and receptionist dashboard",
+  "main": "server.js",
+  "scripts": {"start": "node server.js"},
+  "dependencies": {"express": "^4.21.2"}
+}
